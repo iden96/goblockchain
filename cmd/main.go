@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"goblockchain/internal/domain/blockchain"
 	"goblockchain/internal/domain/wallet"
 	"log"
 )
@@ -11,25 +12,31 @@ func init() {
 }
 
 func main() {
-	// myBlockchainAddress := "my_blockchain_address"
-	// blockchain := blockchain.NewBlockchain(myBlockchainAddress)
-	// blockchain.Print()
+	walletM := wallet.NewWallet()
+	walletA := wallet.NewWallet()
+	walletB := wallet.NewWallet()
 
-	// blockchain.AddTransaction("A", "B", 1.0)
-	// blockchain.Mining()
-	// blockchain.Print()
+	t := wallet.NewTransaction(
+		walletA.PrivateKey(),
+		walletA.PublicKey(),
+		walletA.BlockchainAddress(),
+		walletB.BlockchainAddress(),
+		1.0,
+	)
 
-	// blockchain.AddTransaction("C", "D", 2.0)
-	// blockchain.AddTransaction("X", "Y", 3.0)
-	// blockchain.Mining()
-	// blockchain.Print()
+	blockchain := blockchain.NewBlockchain(walletM.BlockchainAddress())
+	blockchain.AddTransaction(
+		walletA.BlockchainAddress(),
+		walletB.BlockchainAddress(),
+		1.0,
+		walletA.PublicKey(),
+		t.GenerateSignature(),
+	)
 
-	// fmt.Printf("my %.1f\n", blockchain.CalculateTotalAmount("my_blockchain_address"))
-	// fmt.Printf("D %.1f\n", blockchain.CalculateTotalAmount("D"))
-	// fmt.Printf("C %.1f\n", blockchain.CalculateTotalAmount("C"))
+	blockchain.Mining()
+	blockchain.Print()
 
-	w := wallet.NewWallet()
-	fmt.Println(w.PrivateKeyStr())
-	fmt.Println(w.PublicKeyStr())
-	fmt.Println(w.BlockchainAddress())
+	fmt.Printf("A %.1f\n", blockchain.CalculateTotalAmount(walletA.BlockchainAddress()))
+	fmt.Printf("B %.1f\n", blockchain.CalculateTotalAmount(walletB.BlockchainAddress()))
+	fmt.Printf("M %.1f\n", blockchain.CalculateTotalAmount(walletM.BlockchainAddress()))
 }
