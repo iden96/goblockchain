@@ -4,15 +4,15 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	t "goblockchain/internal/domain/transaction"
+	t "goblockchain/domain/transaction"
 	"time"
 )
 
 type Block struct {
-	Timestamp    int64            `json:"timestamp"`
-	Nonce        int              `json:"nonce"`
-	PreviousHash [32]byte         `json:"previous_hash"`
-	Transactions []*t.Transaction `json:"transactions"`
+	Timestamp    int64
+	Nonce        int
+	PreviousHash [32]byte
+	Transactions []*t.Transaction
 }
 
 func NewBlock(none int, previousHash [32]byte, transactions []*t.Transaction) *Block {
@@ -36,4 +36,18 @@ func (b *Block) Print() {
 	for _, t := range b.Transactions {
 		t.Print()
 	}
+}
+
+func (b *Block) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Timestamp    int64            `json:"timestamp"`
+		Nonce        int              `json:"nonce"`
+		PreviousHash string           `json:"previous_hash"`
+		Transactions []*t.Transaction `json:"transactions"`
+	}{
+		Timestamp:    b.Timestamp,
+		Nonce:        b.Nonce,
+		PreviousHash: fmt.Sprintf("%x", b.PreviousHash),
+		Transactions: b.Transactions,
+	})
 }

@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"goblockchain/internal/domain/block"
-	"goblockchain/internal/domain/transaction"
-	"goblockchain/internal/domain/wallet"
+	"goblockchain/domain/block"
+	"goblockchain/domain/transaction"
+	"goblockchain/domain/wallet"
 	"log"
 	"strings"
 )
@@ -22,12 +22,14 @@ type Blockchain struct {
 	transactionPool   []*transaction.Transaction
 	chain             []*block.Block
 	blockchainAddress string
+	port              uint16
 }
 
-func NewBlockchain(blockchainAddress string) *Blockchain {
+func NewBlockchain(blockchainAddress string, port uint16) *Blockchain {
 	b := &block.Block{}
 	bc := new(Blockchain)
 	bc.blockchainAddress = blockchainAddress
+	bc.port = port
 	bc.CreateBlock(0, b.Hash())
 
 	return bc
@@ -164,4 +166,12 @@ func (bc *Blockchain) Print() {
 		block.Print()
 	}
 	fmt.Printf("%s\n", strings.Repeat("*", 25))
+}
+
+func (bc *Blockchain) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Blocks []*block.Block `json:"chains"`
+	}{
+		Blocks: bc.chain,
+	})
 }
