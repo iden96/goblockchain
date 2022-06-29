@@ -1,6 +1,8 @@
 package utils
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 func JsonStatus(message string) ([]byte, error) {
 	return json.Marshal(struct {

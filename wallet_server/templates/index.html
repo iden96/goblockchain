@@ -48,6 +48,12 @@
           data: JSON.stringify(transactionData),
           success: (response) => {
             console.info(response)
+
+            if ($.parseJSON(response).message === 'fail') {
+              alert('failed')
+              return
+            }
+
             alert('Send success')
           },
           error: (error) => {

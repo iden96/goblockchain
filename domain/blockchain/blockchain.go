@@ -35,6 +35,10 @@ func NewBlockchain(blockchainAddress string, port uint16) *Blockchain {
 	return bc
 }
 
+func (bc *Blockchain) TransactionPool() []*transaction.Transaction {
+	return bc.transactionPool
+}
+
 func (bc *Blockchain) CreateBlock(nonce int, previousHash [32]byte) *block.Block {
 	b := block.NewBlock(nonce, previousHash, bc.transactionPool)
 	bc.chain = append(bc.chain, b)
@@ -58,6 +62,23 @@ func (bc *Blockchain) VerifyTransactionSignature(
 	return ecdsa.Verify(senderPublicKey, h[:], s.R, s.S)
 }
 
+func (bc *Blockchain) CreateTransaction(
+	sender string,
+	recipient string,
+	value float32,
+	senderPublicKey *ecdsa.PublicKey,
+	s *wallet.Signature,
+) bool {
+	isTransacted := bc.AddTransaction(
+		sender,
+		recipient,
+		value,
+		senderPublicKey,
+		s,
+	)
+
+	return isTransacted
+}
 func (bc *Blockchain) AddTransaction(
 	sender string,
 	recipient string,

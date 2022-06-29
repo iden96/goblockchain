@@ -1,8 +1,12 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	brs "goblockchain/blockchain_server/pkg/dto/blockchain_requests"
 	"goblockchain/domain/wallet"
+	wrs "goblockchain/wallet_server/pkg/dto/wallet_requests"
 	"goblockchain/wallet_server/utils"
 	"html/template"
 	"io"
@@ -61,10 +65,77 @@ func (ws *WalletServer) Wallet(w http.ResponseWriter, req *http.Request) {
 }
 
 func (ws *WalletServer) CreateTransaction(w http.ResponseWriter, req *http.Request) {
+	failMessage, _ := utils.JsonStatus("fail")
+
 	switch req.Method {
 	case http.MethodPost:
-		m, _ := utils.JsonStatus("success")
-		io.WriteString(w, string(m))
+		decoder := json.NewDecoder(req.Body)
+		t := wrs.TransactionRequest{}
+		err := decoder.Decode(&t)
+
+		if err != nil {
+			log.Printf("ERROR: %v", err)
+			io.WriteString(w, string(failMessage))
+
+			return
+		}
+
+		if !t.Validate() {
+			log.Println("ERROR: missing field(s)")
+			io.WriteString(w, string(failMessage))
+
+			return
+		}
+
+		publicKey := wallet.PublicKeyFromString(*t.SenderPublicKey)
+		privateKey := wallet.PrivateKeyFromString(*t.SenderPrivateKey, publicKey)
+		value, err := strconv.ParseFloat(*t.Value, 32)
+
+		if err != nil {
+			log.Println("ERROR: parse error")
+			io.WriteString(w, string(failMessage))
+
+			return
+		}
+
+		value32 := float32(value)
+
+		w.Header().Add("Content-Type", "application/json")
+
+		transaction := wallet.NewTransaction(
+			privateKey,
+			publicKey,
+			*t.SenderBlockchainAddress,
+			*t.RecipientBlockchainAddress,
+			value32,
+		)
+		signature := transaction.GenerateSignature()
+		signatureStr := signature.String()
+
+		bt := &brs.TransactionRequest{
+			SenderBlockchainAddress:    t.SenderBlockchainAddress,
+			RecipientBlockchainAddress: t.RecipientBlockchainAddress,
+			SenderPublicKey:            t.SenderPublicKey,
+			Value:                      &value32,
+			Signature:                  &signatureStr,
+		}
+
+		m, _ := json.Marshal(bt)
+		buf := bytes.NewBuffer(m)
+		url := fmt.Sprintf("%s/transactions", ws.Gateway())
+
+		res, _ := http.Post(
+			url,
+			"application/json",
+			buf,
+		)
+		if res.StatusCode == 201 {
+			m, _ := utils.JsonStatus("success")
+			io.WriteString(w, string(m))
+			return
+		}
+
+		io.WriteString(w, string(failMessage))
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		log.Println("ERROR: Invalid HTTP Method")
