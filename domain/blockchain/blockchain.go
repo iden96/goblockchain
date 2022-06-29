@@ -10,15 +10,19 @@ import (
 	"goblockchain/domain/wallet"
 	"log"
 	"strings"
+	"sync"
+	"time"
 )
 
 const (
 	MINING_DIFFICULTY = 3
 	MINING_SENDER     = "THE BLOCKCHAIN"
 	MINING_REWARD     = 1.0
+	MINING_TIMER_SEC  = 20
 )
 
 type Blockchain struct {
+	sync.Mutex
 	transactionPool   []*transaction.Transaction
 	chain             []*block.Block
 	blockchainAddress string
@@ -147,6 +151,13 @@ func (bc *Blockchain) ProofOfWork() int {
 }
 
 func (bc *Blockchain) Mining() bool {
+	bc.Lock()
+	defer bc.Unlock()
+
+	if len(bc.transactionPool) == 0 {
+		return false
+	}
+
 	bc.AddTransaction(MINING_SENDER, bc.blockchainAddress, MINING_REWARD, nil, nil)
 
 	nonce := bc.ProofOfWork()
@@ -156,6 +167,11 @@ func (bc *Blockchain) Mining() bool {
 	log.Println("action=mining, status=success")
 
 	return true
+}
+
+func (bc *Blockchain) StartMining() {
+	bc.Mining()
+	_ = time.AfterFunc(time.Second*MINING_TIMER_SEC, bc.StartMining)
 }
 
 func (bc *Blockchain) CalculateTotalAmount(blockchainAddress string) float32 {
