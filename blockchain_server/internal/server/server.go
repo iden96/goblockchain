@@ -3,7 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	brs "goblockchain/blockchain_server/pkg/dto/blockchain_requests"
+	breq "goblockchain/blockchain_server/pkg/dto/blockchain_requests"
+	bres "goblockchain/blockchain_server/pkg/dto/blockchain_responses"
 	"goblockchain/domain/blockchain"
 	"goblockchain/domain/transaction"
 	"goblockchain/domain/wallet"
@@ -79,7 +80,7 @@ func (bcs *BlockchainServer) Transactions(w http.ResponseWriter, req *http.Reque
 		io.WriteString(w, string(m[:]))
 	case http.MethodPost:
 		decoder := json.NewDecoder(req.Body)
-		t := brs.TransactionRequest{}
+		t := breq.TransactionRequest{}
 		err := decoder.Decode(&t)
 
 		if err != nil {
@@ -162,6 +163,26 @@ func (bcs *BlockchainServer) StartMining(w http.ResponseWriter, req *http.Reques
 	}
 }
 
+func (bcs *BlockchainServer) Amount(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodGet:
+		blockchainAddress := req.URL.Query().Get("blockchain_address")
+		amount := bcs.GetBlockchain().CalculateTotalAmount(blockchainAddress)
+
+		res := bres.AmountResponse{
+			Amount: amount,
+		}
+
+		m, _ := json.Marshal(res)
+
+		w.Header().Add("Content-Type", "application/json")
+		io.WriteString(w, string(m[:]))
+	default:
+		log.Println("ERROR: Invalid HTTP Method")
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
 func (bcs *BlockchainServer) Run() {
 	port := strconv.Itoa(int(bcs.Port()))
 	host := fmt.Sprintf("0.0.0.0:%s", port)
@@ -170,6 +191,7 @@ func (bcs *BlockchainServer) Run() {
 	http.HandleFunc("/transactions", bcs.Transactions)
 	http.HandleFunc("/mine", bcs.Mine)
 	http.HandleFunc("/mine/start", bcs.StartMining)
+	http.HandleFunc("/amount", bcs.Amount)
 
 	log.Fatal(http.ListenAndServe(host, nil))
 }

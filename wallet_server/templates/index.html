@@ -24,6 +24,23 @@
         }
       })
 
+      $('#reload_wallet').click(() => {
+        const data = { blockchain_address: $('#blockchain_address').val() }
+        $.ajax({
+          url: '/wallet/amount',
+          type: 'GET',
+          data,
+          success: (response) => {
+            const amount = response["amount"]
+            $('#wallet_amount').text(amount)
+            console.info(amount)
+          },
+          error: (error) => {
+            console.error(error)
+          }
+        })
+      })
+
       $('#send_money_button').click(() => {
         const confirmText = 'Are you sure to send?'
         const confirmResult = confirm(confirmText)
@@ -49,7 +66,7 @@
           success: (response) => {
             console.info(response)
 
-            if ($.parseJSON(response).message === 'fail') {
+            if (response.message === 'fail') {
               alert('failed')
               return
             }
