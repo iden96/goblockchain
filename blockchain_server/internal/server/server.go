@@ -119,6 +119,52 @@ func (bcs *BlockchainServer) Transactions(w http.ResponseWriter, req *http.Reque
 		}
 
 		io.WriteString(w, string(m))
+	case http.MethodPut:
+		decoder := json.NewDecoder(req.Body)
+		t := breq.TransactionRequest{}
+		err := decoder.Decode(&t)
+
+		if err != nil {
+			log.Printf("ERROR: %v", err)
+			io.WriteString(w, string(failMessage))
+			return
+		}
+
+		if !t.Validate() {
+			log.Print("ERROR: missing filed(s)")
+			io.WriteString(w, string(failMessage))
+			return
+		}
+
+		publicKey := wallet.PublicKeyFromString(*t.SenderPublicKey)
+		signature := wallet.SignatureFromString(*t.Signature)
+		bc := bcs.GetBlockchain()
+
+		isUpdated := bc.AddTransaction(
+			*t.SenderBlockchainAddress,
+			*t.RecipientBlockchainAddress,
+			*t.Value,
+			publicKey,
+			signature,
+		)
+
+		w.Header().Add("Content-Type", "application/json")
+
+		var m []byte
+		if !isUpdated {
+			w.WriteHeader(http.StatusBadRequest)
+			m, _ = utils.JsonStatus("fail")
+		} else {
+			m, _ = utils.JsonStatus("success")
+		}
+
+		io.WriteString(w, string(m))
+	case http.MethodDelete:
+		bc := bcs.GetBlockchain()
+		bc.ClearTransactionPool()
+
+		m, _ := utils.JsonStatus("success")
+		io.WriteString(w, string(m))
 	default:
 		log.Println("ERROR: Invalid HTTP Method")
 		w.WriteHeader(http.StatusBadRequest)
@@ -186,6 +232,8 @@ func (bcs *BlockchainServer) Amount(w http.ResponseWriter, req *http.Request) {
 func (bcs *BlockchainServer) Run() {
 	port := strconv.Itoa(int(bcs.Port()))
 	host := fmt.Sprintf("0.0.0.0:%s", port)
+
+	bcs.GetBlockchain().Run()
 
 	http.HandleFunc("/", bcs.GetChain)
 	http.HandleFunc("/transactions", bcs.Transactions)
